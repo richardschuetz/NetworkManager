@@ -61,6 +61,7 @@ typedef struct {
 	NMSettingIP6ConfigPrivacy ip6_privacy;
 	NMSettingIP6ConfigAddrGenMode addr_gen_mode;
 	char *token;
+	char *dhcp_duid;
 } NMSettingIP6ConfigPrivate;
 
 
@@ -69,6 +70,7 @@ enum {
 	PROP_IP6_PRIVACY,
 	PROP_ADDR_GEN_MODE,
 	PROP_TOKEN,
+	PROP_DHCP_DUID,
 
 	LAST_PROP
 };
@@ -140,6 +142,26 @@ nm_setting_ip6_config_get_token (NMSettingIP6Config *setting)
 	g_return_val_if_fail (NM_IS_SETTING_IP6_CONFIG (setting), NULL);
 
 	return NM_SETTING_IP6_CONFIG_GET_PRIVATE (setting)->token;
+}
+
+/**
+ * nm_setting_ip6_config_get_dhcp_duid:
+ * @setting: the #NMSettingIP6Config
+ *
+ * Returns the value contained in the #NMSettingIP6Config:dhcp-duid
+ * property.
+ *
+ * Returns: The configured DUID value to be included in the DHCPv6 requests
+ * sent to the DHCPv6 servers.
+ *
+ * Since: 1.12
+ **/
+const char *
+nm_setting_ip6_config_get_dhcp_duid (NMSettingIP6Config *setting)
+{
+	g_return_val_if_fail (NM_IS_SETTING_IP6_CONFIG (setting), NULL);
+
+	return NM_SETTING_IP6_CONFIG_GET_PRIVATE (setting)->dhcp_duid;
 }
 
 static gboolean
@@ -469,6 +491,10 @@ set_property (GObject *object, guint prop_id,
 		g_free (priv->token);
 		priv->token = g_value_dup_string (value);
 		break;
+	case PROP_DHCP_DUID:
+		g_free (priv->dhcp_duid);
+		priv->dhcp_duid = g_value_dup_string (value);
+		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -491,6 +517,9 @@ get_property (GObject *object, guint prop_id,
 	case PROP_TOKEN:
 		g_value_set_string (value, priv->token);
 		break;
+	case PROP_DHCP_DUID:
+		g_value_set_string (value, priv->dhcp_duid);
+		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -504,6 +533,7 @@ finalize (GObject *object)
 	NMSettingIP6ConfigPrivate *priv = NM_SETTING_IP6_CONFIG_GET_PRIVATE (self);
 
 	g_free (priv->token);
+	g_free (priv->dhcp_duid);
 
 	G_OBJECT_CLASS (nm_setting_ip6_config_parent_class)->finalize (object);
 }
@@ -792,6 +822,26 @@ nm_setting_ip6_config_class_init (NMSettingIP6ConfigClass *ip6_class)
 		                      NM_SETTING_PARAM_INFERRABLE |
 		                      G_PARAM_STATIC_STRINGS));
 
+	/**
+	 * NMSettingIP6Config:dhcp-duid:
+	 *
+	 * A string containing the DHCPv6 Unique Identifier (DUID) used by the dhcp
+	 * client to identify itself to DHCPv6 servers (RFC 3315). The DUID is carried
+	 * in the Client Identifier option.
+	 * If unset, the DUID will be extracted from the connection lease file. If not
+	 * present, the system-wide (global) DUID will be used.
+	 *
+	 * If the property is a hex string ('aa:bb:cc') it is interpreted as a binary
+	 * DUID and filled as an opaque value in the Client Identifier option.
+	 *
+	 * Since: 1.12
+	 **/
+	g_object_class_install_property
+		(object_class, PROP_DHCP_DUID,
+		 g_param_spec_string (NM_SETTING_IP6_CONFIG_DHCP_DUID, "", "",
+		                      NULL,
+		                      G_PARAM_READWRITE |
+		                      G_PARAM_STATIC_STRINGS));
 
 	/* IP6-specific property overrides */
 
