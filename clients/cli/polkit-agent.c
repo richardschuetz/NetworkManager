@@ -14,22 +14,16 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- * Copyright 2014 Red Hat, Inc.
+ * Copyright 2014, 2018 Red Hat, Inc.
  */
 
 #include "nm-default.h"
 
 #include "polkit-agent.h"
 
-#include <stdio.h>
-#include <string.h>
-#include <sys/types.h>
-#include <unistd.h>
-
-#include "nm-polkit-listener.h"
 #include "common.h"
+#include "nm-polkit-listener.h"
 
-#if WITH_POLKIT_AGENT
 static char *
 polkit_request (NMPolkitListener *listener,
                 const char *request,
@@ -84,12 +78,10 @@ polkit_completed (NMPolkitListener *listener,
 	/* We don't print anything here. The outcome will be evident from
 	 * the operation result anyway. */
 }
-#endif
 
 gboolean
 nmc_polkit_agent_init (NmCli* nmc, gboolean for_session, GError **error)
 {
-#if WITH_POLKIT_AGENT
 	static const NMPolkitListenVtable vtable = {
 		.on_request = polkit_request,
 		.on_show_info = polkit_show_info,
@@ -98,8 +90,6 @@ nmc_polkit_agent_init (NmCli* nmc, gboolean for_session, GError **error)
 	};
 	NMPolkitListener *listener;
 
-	g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
-
 	listener = nm_polkit_listener_new (for_session, error);
 	if (!listener)
 		return FALSE;
@@ -107,26 +97,22 @@ nmc_polkit_agent_init (NmCli* nmc, gboolean for_session, GError **error)
 	nm_polkit_listener_set_vtable (listener, &vtable, nmc);
 
 	nmc->pk_listener = listener;
-#endif
 	return TRUE;
 }
 
 void
 nmc_polkit_agent_fini (NmCli* nmc)
 {
-#if WITH_POLKIT_AGENT
 	if (nmc->pk_listener) {
 		nm_polkit_listener_set_vtable (nmc->pk_listener, NULL, NULL);
 		g_clear_object (&nmc->pk_listener);
 	}
-#endif
 }
 
 gboolean
 nmc_start_polkit_agent_start_try (NmCli *nmc)
 {
-#if WITH_POLKIT_AGENT
-	GError *error = NULL;
+	gs_free_error GError *error = NULL;
 
 	/* We don't register polkit agent at all when running non-interactively */
 	if (!nmc->ask)
@@ -135,9 +121,7 @@ nmc_start_polkit_agent_start_try (NmCli *nmc)
 	if (!nmc_polkit_agent_init (nmc, FALSE, &error)) {
 		g_printerr (_("Warning: polkit agent initialization failed: %s\n"),
 		            error->message);
-		g_error_free (error);
 		return FALSE;
 	}
-#endif
 	return TRUE;
 }

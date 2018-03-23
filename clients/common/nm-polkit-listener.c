@@ -39,15 +39,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#if WITH_POLKIT_AGENT
-
 /*****************************************************************************/
 
 typedef struct {
 	gpointer reg_handle;  /* handle of polkit agent registration */
 
 	GSimpleAsyncResult *simple;
-	PolkitAgentSession *active_session;
+	//PolkitAgentSession *active_session;
 	gulong cancel_id;
 	GCancellable *cancellable;
 
@@ -60,9 +58,18 @@ typedef struct {
 	gpointer vtable_user_data;
 } NMPolkitListenerPrivate;
 
-G_DEFINE_TYPE (NMPolkitListener, nm_polkit_listener, POLKIT_AGENT_TYPE_LISTENER)
+struct _NMPolkitListener {
+	GObject parent;
+	NMPolkitListenerPrivate _priv;
+};
 
-#define NM_POLKIT_LISTENER_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), NM_TYPE_POLKIT_LISTENER, NMPolkitListenerPrivate))
+struct _NMPolkitListenerClass {
+	GObjectClass parent;
+};
+
+G_DEFINE_TYPE (NMPolkitListener, nm_polkit_listener, G_TYPE_OBJECT)
+
+#define NM_POLKIT_LISTENER_GET_PRIVATE(self) _NM_GET_PRIVATE (self, NMPolkitListener, NM_IS_POLKIT_LISTENER)
 
 /*****************************************************************************/
 
@@ -79,6 +86,7 @@ nm_polkit_listener_set_vtable (NMPolkitListener *self,
 
 /*****************************************************************************/
 
+#if 0
 static void
 on_request (PolkitAgentSession *session,
             const char *request,
@@ -288,6 +296,7 @@ initiate_authentication_finish (PolkitAgentListener *listener,
 {
 	return !g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result), error);
 }
+#endif
 
 /*****************************************************************************/
 
@@ -313,7 +322,7 @@ nm_polkit_listener_new (gboolean for_session,
                         GError **error)
 {
 	NMPolkitListener *listener;
-	PolkitSubject* session;
+	PolkitSubject *session;
 	NMPolkitListenerPrivate *priv;
 
 	g_return_val_if_fail (!error || !*error, NULL);
@@ -361,14 +370,6 @@ static void
 nm_polkit_listener_class_init (NMPolkitListenerClass *klass)
 {
 	GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
-	PolkitAgentListenerClass *pkal_class = POLKIT_AGENT_LISTENER_CLASS (klass);
-
-	g_type_class_add_private (klass, sizeof (NMPolkitListenerPrivate));
 
 	gobject_class->finalize = nm_polkit_listener_finalize;
-
-	pkal_class->initiate_authentication = initiate_authentication;
-	pkal_class->initiate_authentication_finish = initiate_authentication_finish;
 }
-
-#endif /* WITH_POLKIT_AGENT */
