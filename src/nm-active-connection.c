@@ -52,6 +52,7 @@ typedef struct _NMActiveConnectionPrivate {
 	bool master_ready:1;
 
 	NMActivationType activation_type:3;
+	NMActivationReason activation_reason:3;
 
 	NMAuthSubject *subject;
 	NMActiveConnection *master;
@@ -890,6 +891,22 @@ _set_activation_type_managed (NMActiveConnection *self)
 	                  NM_DEVICE_SYS_IFACE_STATE_EXTERNAL,
 	                  NM_DEVICE_SYS_IFACE_STATE_ASSUME))
 		nm_device_sys_iface_state_set (priv->device, NM_DEVICE_SYS_IFACE_STATE_MANAGED);
+}
+
+NMActivationReason
+nm_active_connection_get_activation_reason (NMActiveConnection *self)
+{
+	g_return_val_if_fail (NM_IS_ACTIVE_CONNECTION (self), NM_ACTIVATION_REASON_UNSET);
+
+	return NM_ACTIVE_CONNECTION_GET_PRIVATE (self)->activation_reason;
+}
+
+void
+nm_active_connection_set_activation_reason (NMActiveConnection *self, NMActivationReason reason)
+{
+	g_return_if_fail (NM_IS_ACTIVE_CONNECTION (self));
+
+	NM_ACTIVE_CONNECTION_GET_PRIVATE (self)->activation_reason = reason;
 }
 
 /*****************************************************************************/

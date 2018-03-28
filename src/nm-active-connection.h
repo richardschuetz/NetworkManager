@@ -184,6 +184,10 @@ void          nm_active_connection_set_parent (NMActiveConnection *self,
 
 NMActivationType nm_active_connection_get_activation_type (NMActiveConnection *self);
 
+NMActivationReason nm_active_connection_get_activation_reason (NMActiveConnection *self);
+
+void nm_active_connection_set_activation_reason (NMActiveConnection *self, NMActivationReason reason);
+
 void          nm_active_connection_clear_secrets (NMActiveConnection *self);
 
 #endif /* __NETWORKMANAGER_ACTIVE_CONNECTION_H__ */
