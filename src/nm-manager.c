@@ -3518,6 +3518,7 @@ autoconnect_slaves (NMManager *self,
 		}
 
 		for (i = 0; i < n_slaves; i++) {
+			NMActiveConnection *ac;
 			SlaveConnectionInfo *slave = &slaves[i];
 			const char *uuid;
 
@@ -3563,15 +3564,17 @@ autoconnect_slaves (NMManager *self,
 			       nm_settings_connection_get_uuid (master_connection));
 
 			/* Schedule slave activation */
-			nm_manager_activate_connection (self,
-			                                slave->connection,
-			                                NULL,
-			                                NULL,
-			                                slave->device,
-			                                subject,
-			                                NM_ACTIVATION_TYPE_MANAGED,
-			                                &local_err);
-			if (local_err) {
+			ac = nm_manager_activate_connection (self,
+			                                     slave->connection,
+			                                     NULL,
+			                                     NULL,
+			                                     slave->device,
+			                                     subject,
+			                                     NM_ACTIVATION_TYPE_MANAGED,
+			                                     &local_err);
+			if (ac)
+				nm_active_connection_set_activation_reason (ac, NM_ACTIVATION_REASON_AUTOCONNECT_SLAVES);
+			else {
 				_LOGW (LOGD_CORE, "Slave connection activation failed: %s", local_err->message);
 				g_clear_error (&local_err);
 			}
@@ -4016,13 +4019,15 @@ _internal_activation_auth_done (NMActiveConnection *active,
 
 	priv->authorizing_connections = g_slist_remove (priv->authorizing_connections, active);
 
-	/* Don't continue with the activation if an equivalent active connection
-	 * already exists.  We also check this earlier, but there we may fail to
+	/* Don't continue with an internal activation if an equivalent active
+	 * connection already exists. Note that slave autoconnections always force a
+	 * reconnection.  We also check this earlier, but there we may fail to
 	 * detect a duplicate if the existing active connection is undergoing
 	 * authorization in impl_manager_activate_connection().
 	 */
 	if (   success
-	    && nm_auth_subject_is_internal (nm_active_connection_get_subject (active))) {
+	    && nm_auth_subject_is_internal (nm_active_connection_get_subject (active))
+	    && nm_active_connection_get_activation_reason (active) != NM_ACTIVATION_REASON_AUTOCONNECT_SLAVES) {
 		c_list_for_each_entry (ac, &priv->active_connections_lst_head, active_connections_lst) {
 			if (   nm_active_connection_get_device (ac) == nm_active_connection_get_device (active)
 			    && nm_active_connection_get_settings_connection (ac) == nm_active_connection_get_settings_connection (active)
