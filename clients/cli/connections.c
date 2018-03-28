@@ -14,7 +14,7 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- * Copyright 2010 - 2017 Red Hat, Inc.
+ * Copyright 2010 - 2018 Red Hat, Inc.
  */
 
 #include "nm-default.h"
@@ -4948,15 +4948,7 @@ gen_nmcli_cmds_submenu (const char *text, int state)
 static char *
 gen_cmd_nmcli (const char *text, int state)
 {
-	const char *words[] = { "status-line", "save-confirmation", "show-secrets", "prompt-color", NULL };
-	return nmc_rl_gen_func_basic (text, state, words);
-}
-
-static char *
-gen_cmd_nmcli_prompt_color (const char *text, int state)
-{
-	const char *words[] = { "normal", "black", "red", "green", "yellow",
-	                        "blue", "magenta", "cyan", "white", NULL };
+	const char *words[] = { "status-line", "save-confirmation", "show-secrets", NULL };
 	return nmc_rl_gen_func_basic (text, state, words);
 }
 
@@ -5272,8 +5264,6 @@ get_gen_func_cmd_nmcli (const char *str)
 		return gen_func_bool_values;
 	if (matches (str, "show-secrets"))
 		return gen_func_bool_values;
-	if (matches (str, "prompt-color"))
-		return gen_cmd_nmcli_prompt_color;
 	return NULL;
 }
 
@@ -7556,37 +7546,18 @@ editor_menu_main (NmCli *nmc, NMConnection *connection, const char *connection_t
 				} else
 					nmc->nmc_config_mutable.show_secrets = bb;
 			} else if (cmd_arg_p && matches (cmd_arg_p, "prompt-color")) {
-				GError *tmp_err = NULL;
-				NMMetaTermColor color;
-				color = nmc_term_color_parse_string (cmd_arg_v ? g_strstrip (cmd_arg_v) : " ", &tmp_err);
-				if (tmp_err) {
-					g_print (_("Error: bad color: %s\n"), tmp_err->message);
-					g_clear_error (&tmp_err);
-				} else {
-					nmc->editor_prompt_color = color;
-					nm_clear_g_free (&menu_ctx.main_prompt);
-					if (menu_ctx.level == 0) {
-						menu_ctx.main_prompt = nmc_colorize (nmc->nmc_config.use_colors, nmc->editor_prompt_color, NM_META_TERM_FORMAT_NORMAL,
-						                                     BASE_PROMPT);
-					} else {
-						menu_ctx.main_prompt = nmc_colorize (nmc->nmc_config.use_colors, nmc->editor_prompt_color, NM_META_TERM_FORMAT_NORMAL,
-						                                     "nmcli %s> ",
-						                                     nm_setting_get_name (menu_ctx.curr_setting));
-					}
-				}
+				g_warning (_("Ignoring errorneous --prompt-color argument."));
 			} else if (!cmd_arg_p) {
 				g_print (_("Current nmcli configuration:\n"));
 				g_print ("status-line: %s\n"
 				         "save-confirmation: %s\n"
-				         "show-secrets: %s\n"
-				         "prompt-color: %d\n",
+				         "show-secrets: %s\n",
 				         nmc->editor_status_line ? "yes" : "no",
 				         nmc->editor_save_confirmation ? "yes" : "no",
-				         nmc->nmc_config.show_secrets ? "yes" : "no",
-				         nmc->editor_prompt_color);
+				         nmc->nmc_config.show_secrets ? "yes" : "no");
 			} else
 				g_print (_("Invalid configuration option '%s'; allowed [%s]\n"),
-				         cmd_arg_v ? cmd_arg_v : "", "status-line, save-confirmation, show-secrets, prompt-color");
+				         cmd_arg_v ? cmd_arg_v : "", "status-line, save-confirmation, show-secrets");
 
 			break;
 
