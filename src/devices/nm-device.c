@@ -5772,6 +5772,7 @@ ipv4_dad_start (NMDevice *self, NMIP4Config **configs, ArpingCallback cb)
 	guint timeout;
 	gboolean ret, addr_found;
 	const guint8 *hwaddr_arr;
+	size_t length;
 	GError *error = NULL;
 	guint i;
 
@@ -5789,11 +5790,12 @@ ipv4_dad_start (NMDevice *self, NMIP4Config **configs, ArpingCallback cb)
 	timeout = get_ipv4_dad_timeout (self);
 	hwaddr_arr = nm_platform_link_get_address (nm_device_get_platform (self),
 	                                           nm_device_get_ip_ifindex (self),
-	                                           NULL);
+	                                           &length);
 
 	if (   !timeout
 	    || !hwaddr_arr
 	    || !addr_found
+	    || length != ETH_ALEN
 	    || nm_device_sys_iface_state_is_external_or_assume (self)) {
 
 		/* DAD not needed, signal success */
@@ -5809,7 +5811,7 @@ ipv4_dad_start (NMDevice *self, NMIP4Config **configs, ArpingCallback cb)
 	/* don't take additional references of @arping_manager that outlive @self.
 	 * Otherwise, the callback can be invoked on a dangling pointer as we don't
 	 * disconnect the handler. */
-	arping_manager = nm_arping_manager_new (nm_device_get_ip_ifindex (self));
+	arping_manager = nm_arping_manager_new (nm_device_get_ip_ifindex (self), hwaddr_arr, length);
 	priv->arping.dad_list = g_slist_append (priv->arping.dad_list, arping_manager);
 
 	data = g_slice_new0 (ArpingData);
@@ -8900,7 +8902,7 @@ arp_announce (NMDevice *self)
 	                                        nm_device_get_ip_ifindex (self),
 	                                        &hw_addr_len);
 
-	if (!hw_addr_len || !hw_addr)
+	if (!hw_addr || hw_addr_len != ETH_ALEN)
 		return;
 
 	/* We only care about manually-configured addresses; DHCP- and autoip-configured
@@ -8916,7 +8918,7 @@ arp_announce (NMDevice *self)
 	if (num == 0)
 		return;
 
-	priv->arping.announcing = nm_arping_manager_new (nm_device_get_ip_ifindex (self));
+	priv->arping.announcing = nm_arping_manager_new (nm_device_get_ip_ifindex (self), hw_addr, hw_addr_len);
 
 	for (i = 0; i < num; i++) {
 		NMIPAddress *ip = nm_setting_ip_config_get_address (s_ip4, i);
