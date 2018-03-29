@@ -142,6 +142,8 @@ typedef struct _NmCli {
 	gboolean complete;                                /* Autocomplete the command line */
 	gboolean editor_status_line;                      /* Whether to display status line in connection editor */
 	gboolean editor_save_confirmation;                /* Whether to ask for confirmation on saving connections with 'autoconnect=yes' */
+
+	char *color_scheme;                               /* The color scheme in terminal-colors.d(5) format. */
 } NmCli;
 
 extern NmCli nm_cli;

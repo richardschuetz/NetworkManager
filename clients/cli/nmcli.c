@@ -330,20 +330,225 @@ matches_arg (NmCli *nmc, int *argc, char ***argv, const char *pattern, char **ar
 	return TRUE;
 }
 
+/*************************************************************************************/
+
 typedef enum {
         NMC_USE_COLOR_AUTO,
         NMC_USE_COLOR_YES,
         NMC_USE_COLOR_NO,
 } NmcColorOption;
 
+/* Checks whether a particular terminal-colors.d(5) file (.enabled, .disabled or .schem)
+ * exists. If contents is non-NULL, it returns the content. */
+static gboolean
+check_colors_file (NmCli *nmc, NmcColorOption *color_option,
+                   const char *base_dir, const char *name, const char *term, const char *type,
+                   char **contents)
+{
+	char *filename;
+	gboolean exists;
+
+	filename = g_strdup_printf ("%s/terminal-colors.d/%s%s%s%s%s",
+	                            base_dir,
+	                            name ? name : "",
+	                            term ? "@" : "", term ? term : "",
+	                            (name || term) ? "." : "",
+	                            type);
+	if (contents)
+		exists = g_file_get_contents (filename, contents, NULL, NULL);
+	else
+		exists = g_file_test (filename, G_FILE_TEST_EXISTS);
+	g_free (filename);
+
+	return exists;
+}
+
+static void
+check_colors_files_for_term (NmCli *nmc, NmcColorOption *color_option,
+                             const char *base_dir, const char *name, const char *term)
+{
+	if (   *color_option == NMC_USE_COLOR_AUTO
+	    && check_colors_file (nmc, color_option, base_dir, name, term, "enable", NULL)) {
+		*color_option = NMC_USE_COLOR_YES;
+	}
+
+	if (   *color_option == NMC_USE_COLOR_AUTO
+	    && check_colors_file (nmc, color_option, base_dir, name, term, "disable", NULL)) {
+		*color_option = NMC_USE_COLOR_NO;
+	}
+
+	if (*color_option == NMC_USE_COLOR_NO) {
+		/* No need to bother any further. */
+		return;
+	}
+
+	if (nmc->color_scheme == NULL)
+		check_colors_file (nmc, color_option, base_dir, name, term, "schem", &nmc->color_scheme);
+}
+
+static void
+check_colors_files_for_name (NmCli *nmc, NmcColorOption *color_option,
+                             const char *base_dir, const char *name)
+{
+	const gchar *term;
+
+	term = g_getenv ("TERM");
+	if (term)
+		check_colors_files_for_term (nmc, color_option, base_dir, name, term);
+	check_colors_files_for_term (nmc, color_option, base_dir, name, NULL);
+}
+
+static void
+check_colors_files_for_base_dir (NmCli *nmc, NmcColorOption *color_option,
+                                 const char *base_dir)
+{
+	check_colors_files_for_name (nmc, color_option, base_dir, "nmcli");
+	check_colors_files_for_name (nmc, color_option, base_dir, NULL);
+}
+
+static gboolean
+parse_color_scheme (NmCli *nmc, GError **error)
+{
+	char *p = nmc->color_scheme;
+	const char *name;
+	const char *sequence;
+	const char *map[_NM_META_COLOR_NUM] = {
+		[NM_META_COLOR_NONE]                     = NULL,
+		[NM_META_COLOR_CONNECTION_ACTIVATED]     = "connection-activated",
+		[NM_META_COLOR_CONNECTION_ACTIVATING]    = "connection-activating",
+		[NM_META_COLOR_CONNECTION_DISCONNECTING] = "connection-disconnecting",
+		[NM_META_COLOR_CONNECTION_INVISIBLE]     = "connection-invisible",
+		[NM_META_COLOR_CONNECTION_UNKNOWN]       = "connection-unknown",
+		[NM_META_COLOR_CONNECTIVITY_FULL]        = "connectivity-full",
+		[NM_META_COLOR_CONNECTIVITY_LIMITED]     = "connectivity-limited",
+		[NM_META_COLOR_CONNECTIVITY_NONE]        = "connectivity-none",
+		[NM_META_COLOR_CONNECTIVITY_PORTAL]      = "connectivity-portal",
+		[NM_META_COLOR_CONNECTIVITY_UNKNOWN]     = "connectivity-unknown",
+		[NM_META_COLOR_DEVICE_ACTIVATED]         = "device-activated",
+		[NM_META_COLOR_DEVICE_ACTIVATING]        = "device-activating",
+		[NM_META_COLOR_DEVICE_DISCONNECTED]      = "device-disconnected",
+		[NM_META_COLOR_DEVICE_FIRMWARE_MISSING]  = "device-firmware-missing",
+		[NM_META_COLOR_DEVICE_PLUGIN_MISSING]    = "device-plugin-missing",
+		[NM_META_COLOR_DEVICE_UNAVAILABLE]       = "device-unavailable",
+		[NM_META_COLOR_DEVICE_UNKNOWN]           = "device-unknown",
+		[NM_META_COLOR_MANAGER_RUNNING]          = "manager-running",
+		[NM_META_COLOR_MANAGER_STARTING]         = "manager-starting",
+		[NM_META_COLOR_MANAGER_STOPPED]          = "manager-stopped",
+		[NM_META_COLOR_PERMISSION_AUTH]          = "permission-auth",
+		[NM_META_COLOR_PERMISSION_NO]            = "permission-no",
+		[NM_META_COLOR_PERMISSION_UNKNOWN]       = "permission-unknown",
+		[NM_META_COLOR_PERMISSION_YES]           = "permission-yes",
+		[NM_META_COLOR_PROMPT]                   = "prompt",
+		[NM_META_COLOR_STATE_ASLEEP]             = "state-asleep",
+		[NM_META_COLOR_STATE_CONNECTED_GLOBAL]   = "state-connected-global",
+		[NM_META_COLOR_STATE_CONNECTED_LOCAL]    = "state-connected-local",
+		[NM_META_COLOR_STATE_CONNECTED_SITE]     = "state-connected-site",
+		[NM_META_COLOR_STATE_CONNECTING]         = "state-connecting",
+		[NM_META_COLOR_STATE_DISCONNECTED]       = "state-disconnected",
+		[NM_META_COLOR_STATE_DISCONNECTING]      = "state-disconnecting",
+		[NM_META_COLOR_STATE_UNKNOWN]            = "state-unknown",
+		[NM_META_COLOR_WIFI_SIGNAL_EXCELLENT]    = "wifi-signal-excellent",
+		[NM_META_COLOR_WIFI_SIGNAL_FAIR]         = "wifi-signal-fair",
+		[NM_META_COLOR_WIFI_SIGNAL_GOOD]         = "wifi-signal-good",
+		[NM_META_COLOR_WIFI_SIGNAL_POOR]         = "wifi-signal-poor",
+		[NM_META_COLOR_WIFI_SIGNAL_UNKNOWN]      = "wifi-signal-unknown",
+		[NM_META_COLOR_DISABLED]                 = "disabled",
+		[NM_META_COLOR_ENABLED]                  = "enabled",
+	};
+	int i;
+
+	/* This reads through the raw color scheme file contents, identifying the
+	 * color names and sequences, putting in terminating NULs in place, so that
+	 * pointers into the buffer can readily be used as strings in the palette. */
+	while (1) {
+		/* Leading whitespace. */
+		while (isblank (*p) || *p == '\n')
+			p++;
+
+		if (*p == '\0')
+			break;
+
+		/* Comments. */
+		if (*p == '#') {
+			while (*p != '\n' && *p != '\0')
+				p++;
+			continue;
+		}
+
+		/* Color name. */
+		name = p;
+		while (isgraph (*p))
+			p++;
+		if (*p == '\0') {
+			g_set_error (error, NMCLI_ERROR, 0,
+			             _("Unexpected end of file following '%s'\n"), name);
+			return FALSE;
+		}
+
+		/* Separating whitespace. */
+		if (!isblank (*p)) {
+			*p = '\0';
+			g_set_error (error, NMCLI_ERROR, 0,
+			             _("Expected whitespace following '%s'\n"), name);
+			return FALSE;
+		}
+		while (isblank (*p)) {
+			*p = '\0';
+			p++;
+		}
+
+		/* Color sequence. */
+		sequence = p;
+		if (!isgraph (*p)) {
+			g_set_error (error, NMCLI_ERROR, 0,
+			             _("Expected a value for '%s'\n"), name);
+			return FALSE;
+		}
+		while (isgraph (*p))
+			p++;
+
+		/* Trailing whitespace. */
+		while (isblank (*p)) {
+			*p = '\0';
+			p++;
+		}
+		if (*p != '\0') {
+			if (*p != '\n') {
+				g_set_error (error, NMCLI_ERROR, 0,
+				             _("Expected a line break following '%s'\n"), sequence);
+				return FALSE;
+			}
+			*p = '\0';
+			p++;
+		}
+
+		/* All good, set the palette entry. */
+		for (i = NM_META_COLOR_NONE + 1; i < _NM_META_COLOR_NUM; i++) {
+			if (strcmp (map[i], name) == 0) {
+				nmc->nmc_config_mutable.palette[i] = sequence;
+				break;
+			}
+		}
+		if (i == _NM_META_COLOR_NUM)
+			g_printerr (_("Ignoring an unrecognized color: '%s'\n"), name);
+	}
+
+	return TRUE;
+}
+
 static void
 set_colors (NmCli *nmc, NmcColorOption *color_option)
 {
+	GError *error = NULL;
+
 	if (*color_option == NMC_USE_COLOR_AUTO) {
 		if (   g_strcmp0 (g_getenv ("TERM"), "dumb") == 0
 		    || !isatty (STDOUT_FILENO))
 			*color_option = NMC_USE_COLOR_NO;
 	}
+
+	check_colors_files_for_base_dir (nmc, color_option, g_get_user_config_dir ());
+	check_colors_files_for_base_dir (nmc, color_option, SYSCONFDIR);
 
 	switch (*color_option) {
 	case NMC_USE_COLOR_YES:
@@ -354,7 +559,16 @@ set_colors (NmCli *nmc, NmcColorOption *color_option)
 		nmc->nmc_config_mutable.use_colors = FALSE;
 		break;
 	}
+
+	if (nmc->nmc_config_mutable.use_colors && nmc->color_scheme) {
+		if (!parse_color_scheme (nmc, &error)) {
+			g_printerr (_("Error parsing color scheme: %s"), error->message);
+			g_error_free (error);
+		}
+	}
 }
+
+/*************************************************************************************/
 
 static gboolean
 process_command_line (NmCli *nmc, int argc, char **argv)
@@ -667,6 +881,8 @@ nmc_cleanup (NmCli *nmc)
 		} while (ret == -1 && errno == EINTR);
 		nmc->pager_pid = 0;
 	}
+
+	g_free (nmc->color_scheme);
 
 	nmc_polkit_agent_fini (nmc);
 }
