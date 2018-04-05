@@ -7196,14 +7196,21 @@ dhcp6_prefix_delegated (NMDhcpClient *client,
 }
 
 static GBytes *
-dhcp6_get_duid (NMConnection *connection)
+dhcp6_get_duid (NMDevice *self, NMConnection *connection)
 {
 	NMSettingIPConfig *s_ip6;
 	const char *duid;
+	gs_free char *duid_default = NULL;
 
 	s_ip6 = nm_connection_get_setting_ip6_config (connection);
 	duid = nm_setting_ip6_config_get_dhcp_duid (NM_SETTING_IP6_CONFIG (s_ip6));
 
+	if (!duid) {
+		duid_default = nm_config_data_get_connection_default (NM_CONFIG_GET_DATA,
+		                                                      "ipv6.dhcp-duid", self);
+		if (duid_default && duid_default[0])
+			duid = duid_default;
+	}
 	if (!duid)
 		return NULL;
 
@@ -7240,7 +7247,7 @@ dhcp6_start_with_link_ready (NMDevice *self, NMConnection *connection)
 	hwaddr = nm_platform_link_get_address_as_bytes (nm_device_get_platform (self),
 	                                                nm_device_get_ip_ifindex (self));
 
-	duid = dhcp6_get_duid (connection);
+	duid = dhcp6_get_duid (self, connection);
 	priv->dhcp6.client = nm_dhcp_manager_start_ip6 (nm_dhcp_manager_get (),
 	                                                nm_device_get_multi_index (self),
 	                                                nm_device_get_ip_iface (self),
