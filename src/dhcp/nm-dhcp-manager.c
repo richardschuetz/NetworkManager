@@ -218,7 +218,7 @@ client_start (NMDhcpManager *self,
 	if (addr_family == AF_INET)
 		success = nm_dhcp_client_start_ip4 (client, dhcp_client_id, dhcp_anycast_addr, hostname, last_ip4_address);
 	else
-		success = nm_dhcp_client_start_ip6 (client, dhcp_anycast_addr, ipv6_ll_addr, hostname, privacy, needed_prefixes);
+		success = nm_dhcp_client_start_ip6 (client, dhcp_client_id, dhcp_anycast_addr, ipv6_ll_addr, hostname, privacy, needed_prefixes);
 
 	if (!success) {
 		remove_client_unref (self, client);
@@ -297,6 +297,7 @@ nm_dhcp_manager_start_ip6 (NMDhcpManager *self,
                            guint32 route_metric,
                            gboolean send_hostname,
                            const char *dhcp_hostname,
+                           GBytes *duid,
                            guint32 timeout,
                            const char *dhcp_anycast_addr,
                            gboolean info_only,
@@ -315,7 +316,7 @@ nm_dhcp_manager_start_ip6 (NMDhcpManager *self,
 	}
 	return client_start (self, AF_INET6, multi_idx, iface, ifindex, hwaddr, uuid,
 	                     route_table, route_metric, ll_addr,
-	                     NULL, timeout, dhcp_anycast_addr, hostname, TRUE, info_only,
+	                     duid, timeout, dhcp_anycast_addr, hostname, TRUE, info_only,
 	                     privacy, NULL, needed_prefixes);
 }
 
