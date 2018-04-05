@@ -3943,6 +3943,7 @@ cache_on_change (NMPlatform *platform,
 				case NM_LINK_TYPE_MACVLAN:
 				case NM_LINK_TYPE_MACVTAP:
 				case NM_LINK_TYPE_SIT:
+				case NM_LINK_TYPE_TUN:
 				case NM_LINK_TYPE_VLAN:
 				case NM_LINK_TYPE_VXLAN:
 					delayed_action_schedule (platform,
