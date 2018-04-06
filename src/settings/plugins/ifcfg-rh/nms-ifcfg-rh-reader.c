@@ -1818,6 +1818,11 @@ make_ip6_setting (shvarFile *ifcfg,
 	if (strcmp (method, NM_SETTING_IP6_CONFIG_METHOD_IGNORE) == 0)
 		return NM_SETTING (s_ip6);
 
+	value = svGetValueStr_cp (ifcfg, "DHCPV6_DUID");
+	if (value)
+		g_object_set (s_ip6, NM_SETTING_IP6_CONFIG_DHCP_DUID, value, NULL);
+	g_free (value);
+
 	value = svGetValueStr_cp (ifcfg, "DHCPV6_HOSTNAME");
 	/* Use DHCP_HOSTNAME as fallback if it is in FQDN format and ipv6.method is
 	 * auto or dhcp: this is required to support old ifcfg files

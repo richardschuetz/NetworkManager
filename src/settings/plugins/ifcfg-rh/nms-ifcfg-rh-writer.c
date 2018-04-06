@@ -2567,6 +2567,7 @@ write_ip6_setting (NMConnection *connection,
 		svUnsetValue (ifcfg, "IPV6INIT");
 		svUnsetValue (ifcfg, "IPV6_AUTOCONF");
 		svUnsetValue (ifcfg, "DHCPV6C");
+		svUnsetValue (ifcfg, "DHCPv6_DUID");
 		svUnsetValue (ifcfg, "DHCPV6_HOSTNAME");
 		svUnsetValue (ifcfg, "DHCPV6_SEND_HOSTNAME");
 		svUnsetValue (ifcfg, "IPV6_DEFROUTE");
@@ -2606,6 +2607,10 @@ write_ip6_setting (NMConnection *connection,
 		svSetValueStr (ifcfg, "IPV6_AUTOCONF", "shared");
 		svUnsetValue (ifcfg, "DHCPV6C");
 	}
+
+	value = nm_setting_ip6_config_get_dhcp_duid (NM_SETTING_IP6_CONFIG (s_ip6));
+	if (value)
+		svSetValueStr (ifcfg, "DHCPV6_DUID", value);
 
 	write_ip6_setting_dhcp_hostname (s_ip6, ifcfg);
 
