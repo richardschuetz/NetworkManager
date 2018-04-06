@@ -834,6 +834,13 @@ nm_setting_ip6_config_class_init (NMSettingIP6ConfigClass *ip6_class)
 	 * If the property is a hex string ('aa:bb:cc') it is interpreted as a binary
 	 * DUID and filled as an opaque value in the Client Identifier option.
 	 *
+	 * The special value "lease" will retrieve the DUID previously used from the lease
+	 * file belonging to the connection. If no DUID is found, a global and permanent
+	 * DUID-UUID will be generated.
+	 *
+	 * The special values "LLT" and "LL" will generate a DUID of type LLT or LL (see
+	 * RFC 3315) based on the current time and the MAC address of the current device.
+	 *
 	 * Since: 1.12
 	 **/
 	g_object_class_install_property

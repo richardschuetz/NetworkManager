@@ -7196,11 +7196,12 @@ dhcp6_prefix_delegated (NMDhcpClient *client,
 }
 
 static GBytes *
-dhcp6_get_duid (NMDevice *self, NMConnection *connection)
+dhcp6_get_duid (NMDevice *self, NMConnection *connection, GBytes *hwaddr)
 {
 	NMSettingIPConfig *s_ip6;
 	const char *duid;
 	gs_free char *duid_default = NULL;
+	gboolean is_llt;
 
 	s_ip6 = nm_connection_get_setting_ip6_config (connection);
 	duid = nm_setting_ip6_config_get_dhcp_duid (NM_SETTING_IP6_CONFIG (s_ip6));
@@ -7214,10 +7215,45 @@ dhcp6_get_duid (NMDevice *self, NMConnection *connection)
 	if (!duid)
 		return NULL;
 
-	if (strchr (duid, ':'))
-		return nm_utils_hexstr2bin (duid);
-	else
-		return g_bytes_new (duid, strlen (duid));
+	if (nm_streq (duid, "lease"))
+		return NULL;
+
+	if (   (is_llt = nm_streq (duid, "LLT"))
+	    || nm_streq (duid, "LL")) {
+		GByteArray *addr;
+		gsize addr_len;
+		guint16 t_field;
+
+		addr = g_byte_array_sized_new (ETH_ALEN + 2 + 2 + (is_llt ? 4 : 0));
+		g_byte_array_append (addr, g_bytes_get_data (hwaddr, &addr_len), addr_len);
+		if (addr_len != ETH_ALEN) {
+			g_byte_array_unref (addr);
+			return NULL;
+		}
+
+		if (is_llt) {
+			/* Generate and add time as per RFC 3315 */
+			GDateTime *start, *now;
+			guint32 time;
+
+			start = g_date_time_new_utc (2000, 1, 1, 0, 0, 0);
+			now = g_date_time_new_now_utc ();
+			time = htonl ((g_date_time_difference (now, start) / 1000000) % G_MAXUINT32);
+			g_date_time_unref (start);
+			g_date_time_unref (now);
+
+			g_byte_array_prepend (addr, (const guint8 *)&time, 4);
+		}
+
+		t_field = htons (ARPHRD_ETHER);
+		g_byte_array_prepend (addr, (const guint8 *)&t_field, 2);
+		t_field = (is_llt ? htons (1) : htons (3)); /* DUID types : LLT = 1, LL = 3 */
+		g_byte_array_prepend (addr, (const guint8 *)&t_field, 2);
+
+		return g_byte_array_free_to_bytes (addr);
+	}
+
+	return nm_utils_hexstr2bin (duid);
 }
 
 static gboolean
@@ -7247,7 +7283,7 @@ dhcp6_start_with_link_ready (NMDevice *self, NMConnection *connection)
 	hwaddr = nm_platform_link_get_address_as_bytes (nm_device_get_platform (self),
 	                                                nm_device_get_ip_ifindex (self));
 
-	duid = dhcp6_get_duid (self, connection);
+	duid = dhcp6_get_duid (self, connection, hwaddr);
 	priv->dhcp6.client = nm_dhcp_manager_start_ip6 (nm_dhcp_manager_get (),
 	                                                nm_device_get_multi_index (self),
 	                                                nm_device_get_ip_iface (self),
