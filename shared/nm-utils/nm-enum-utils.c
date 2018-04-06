@@ -100,9 +100,9 @@ _nm_utils_enum_to_str_full (GType type,
 		for ( ; value_infos && value_infos->nick; value_infos++) {
 			if (str->len)
 				g_string_append (str, flags_separator);
-			if (uvalue & value_infos->value) {
+			if (uvalue & ((unsigned) value_infos->value)) {
 				g_string_append (str, value_infos->nick);
-				uvalue &= ~value_infos->value;
+				uvalue &= ~((unsigned) value_infos->value);
 			}
 		}
 
