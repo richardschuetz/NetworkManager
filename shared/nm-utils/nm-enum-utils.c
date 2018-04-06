@@ -98,11 +98,24 @@ _nm_utils_enum_to_str_full (GType type,
 		flags_separator = flags_separator ?: " ";
 
 		for ( ; value_infos && value_infos->nick; value_infos++) {
+
+			nm_assert (_enum_is_valid_flags_nick (value_infos->nick));
+
+			if (uvalue == 0) {
+				if (value_infos->value != 0)
+					continue;
+			} else {
+				if (!NM_FLAGS_ALL (uvalue, (unsigned) value_infos->value))
+					continue;
+			}
+
 			if (str->len)
 				g_string_append (str, flags_separator);
-			if (uvalue & ((unsigned) value_infos->value)) {
-				g_string_append (str, value_infos->nick);
-				uvalue &= ~((unsigned) value_infos->value);
+			g_string_append (str, value_infos->nick);
+			uvalue &= ~((unsigned) value_infos->value);
+			if (uvalue == 0) {
+				/* we printed all flags. Done. */
+				goto flags_done;
 			}
 		}
 
@@ -119,6 +132,8 @@ _nm_utils_enum_to_str_full (GType type,
 			g_string_append (str, flags_value->value_nick);
 			uvalue &= ~flags_value->value;
 		} while (uvalue);
+
+flags_done:
 		return g_string_free (str, FALSE);
 	}
 
