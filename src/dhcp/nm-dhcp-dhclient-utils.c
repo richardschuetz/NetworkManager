@@ -611,19 +611,9 @@ nm_dhcp_dhclient_save_duid (const char *leasefile,
 			return FALSE;
 		}
 
-		/* If the file already contains an uncommented DUID, leave it */
 		g_assert (contents);
 		lines = g_strsplit_set (contents, "\n\r", -1);
 		g_free (contents);
-		for (iter = lines; iter && *iter; iter++) {
-			l = *iter;
-			while (g_ascii_isspace (*l))
-				l++;
-			if (g_str_has_prefix (l, DUID_PREFIX)) {
-				g_strfreev (lines);
-				return TRUE;
-			}
-		}
 	}
 
 	s = g_string_sized_new (len + 50);
@@ -631,8 +621,21 @@ nm_dhcp_dhclient_save_duid (const char *leasefile,
 
 	/* Preserve existing leasefile contents */
 	if (lines) {
-		for (iter = lines; iter && *iter; iter++)
+		for (iter = lines; iter && *iter; iter++) {
+			/* If the file contains an uncommented DUID, skip it */
+			l = *iter;
+			while (g_ascii_isspace (*l))
+				l++;
+			if (g_str_has_prefix (l, DUID_PREFIX)) {
+				/* The following token should be an empty string to skip... */
+				iter++;
+				/* ...anyway, watch out for crafted lease files */
+				if (!iter)
+					break;
+				continue;
+			}
 			g_string_append (s, *iter[0] ? *iter : "\n");
+		}
 		g_strfreev (lines);
 	}
 
