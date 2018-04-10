@@ -536,6 +536,9 @@ int      nm_device_spec_match_list_full (NMDevice *self, const GSList *specs, in
 gboolean nm_device_is_activating (NMDevice *dev);
 gboolean nm_device_autoconnect_allowed (NMDevice *self);
 
+NMSettingConnectionCardinality nm_device_get_cardinality_for_connection (NMDevice *self,
+                                                                         NMConnection *connection);
+
 NMDeviceState nm_device_get_state (NMDevice *device);
 
 gboolean nm_device_get_enabled (NMDevice *device);

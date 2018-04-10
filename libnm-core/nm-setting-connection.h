@@ -52,6 +52,7 @@ G_BEGIN_DECLS
 #define NM_SETTING_CONNECTION_AUTOCONNECT    "autoconnect"
 #define NM_SETTING_CONNECTION_AUTOCONNECT_PRIORITY "autoconnect-priority"
 #define NM_SETTING_CONNECTION_AUTOCONNECT_RETRIES "autoconnect-retries"
+#define NM_SETTING_CONNECTION_CARDINALITY    "cardinality"
 #define NM_SETTING_CONNECTION_TIMESTAMP      "timestamp"
 #define NM_SETTING_CONNECTION_READ_ONLY      "read-only"
 #define NM_SETTING_CONNECTION_PERMISSIONS    "permissions"
@@ -97,6 +98,30 @@ typedef enum {
 	NM_SETTING_CONNECTION_LLDP_DISABLE = 0,
 	NM_SETTING_CONNECTION_LLDP_ENABLE_RX = 1,
 } NMSettingConnectionLldp;
+
+/**
+ * NMSettingConnectionCardinality:
+ * @NM_SETTING_CONNECTION_CARDINALITY_DEFAULT: indicates that the per-connection
+ *   setting is unspecified and allows fallback to the globally configured default.
+ *   If still unspecified, defaults to @NM_SETTING_CONNECTION_CARDINALITY_SINGLE.
+ * @NM_SETTING_CONNECTION_CARDINALITY_SINGLE: the connection profile can only
+ *   be active once at each moment. Activating a profile that is already active,
+ *   will first deactivate it.
+ * @NM_SETTING_CONNECTION_CARDINALITY_MANUAL_MULTIPLE: the profile can
+ *   be manually activated multiple times on different devices. However,
+ *   reggarding autoconnect, the profile will autoconnect only if it is
+ *   currently not connected otherwise.
+ * @NM_SETTING_CONNECTION_CARDINALITY_MULTIPLE: the profile can autoactivate
+ *   and be manually activated multiple times together.
+ *
+ * Since: 1.12
+ */
+typedef enum {
+	NM_SETTING_CONNECTION_CARDINALITY_DEFAULT           = 0,
+	NM_SETTING_CONNECTION_CARDINALITY_SINGLE            = 1,
+	NM_SETTING_CONNECTION_CARDINALITY_MANUAL_MULTIPLE   = 2,
+	NM_SETTING_CONNECTION_CARDINALITY_MULTIPLE          = 3,
+} NMSettingConnectionCardinality;
 
 /**
  * NMSettingConnectionMdns:
@@ -145,6 +170,8 @@ gboolean    nm_setting_connection_get_autoconnect      (NMSettingConnection *set
 gint        nm_setting_connection_get_autoconnect_priority (NMSettingConnection *setting);
 NM_AVAILABLE_IN_1_6
 gint        nm_setting_connection_get_autoconnect_retries (NMSettingConnection *setting);
+NM_AVAILABLE_IN_1_12
+NMSettingConnectionCardinality nm_setting_connection_get_cardinality (NMSettingConnection *setting);
 guint64     nm_setting_connection_get_timestamp        (NMSettingConnection *setting);
 gboolean    nm_setting_connection_get_read_only        (NMSettingConnection *setting);
 

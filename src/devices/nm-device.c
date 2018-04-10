@@ -2003,6 +2003,38 @@ _get_mdns (NMDevice *self)
 	return mdns;
 }
 
+NMSettingConnectionCardinality
+nm_device_get_cardinality_for_connection (NMDevice *self, NMConnection *connection)
+{
+	NMSettingConnection *s_con;
+	NMSettingConnectionCardinality value = NM_SETTING_CONNECTION_CARDINALITY_DEFAULT;
+
+	g_return_val_if_fail (NM_IS_DEVICE (self), NM_SETTING_CONNECTION_CARDINALITY_DEFAULT);
+
+	s_con = nm_connection_get_setting_connection (connection);
+	if (!s_con)
+		g_return_val_if_reached (NM_SETTING_CONNECTION_CARDINALITY_DEFAULT);
+
+	value = nm_setting_connection_get_cardinality (s_con);
+	if (value == NM_SETTING_CONNECTION_CARDINALITY_DEFAULT) {
+		gs_free char *svalue = NULL;
+
+		svalue = nm_config_data_get_connection_default (NM_CONFIG_GET_DATA,
+		                                                "connection.cardinality",
+		                                                self);
+		value = _nm_utils_ascii_str_to_int64 (svalue,
+		                                      10,
+		                                      NM_SETTING_CONNECTION_CARDINALITY_DEFAULT,
+		                                      NM_SETTING_CONNECTION_CARDINALITY_MULTIPLE,
+		                                      NM_SETTING_CONNECTION_CARDINALITY_DEFAULT);
+
+		if (value == NM_SETTING_CONNECTION_CARDINALITY_DEFAULT)
+			value = NM_SETTING_CONNECTION_CARDINALITY_SINGLE;
+	}
+
+	return value;
+}
+
 guint32
 nm_device_get_route_table (NMDevice *self,
                            int addr_family,
